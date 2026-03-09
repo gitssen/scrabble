@@ -18,6 +18,7 @@ const handle = nextApp.getRequestHandler();
 const STATE_FILE = path.join(process.cwd(), 'gamestate.json');
 
 // Game State
+let io: Server;
 let tileBag: any[] = [];
 let currentTurnTiles: PlacedTile[] = [];
 let gameState: GameState = {
@@ -29,6 +30,7 @@ let gameState: GameState = {
   currentPlayerIndex: 0,
   board: Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
   remainingTiles: 0,
+  messages: [],
 };
 
 function saveState() {
@@ -39,12 +41,22 @@ function saveState() {
   }
 }
 
+function broadcastGameState(event = 'gameStateUpdate', target: Server | any = io) {
+  const stateToEmit = {
+    ...gameState,
+    messages: [...gameState.messages]
+  };
+  target.emit(event, stateToEmit);
+}
+
 function loadState() {
   try {
     if (fs.existsSync(STATE_FILE)) {
       const data = fs.readFileSync(STATE_FILE, 'utf8');
       const saved = JSON.parse(data);
       gameState = saved.gameState;
+      // Ensure messages array exists for backward compatibility with old saves
+      if (!gameState.messages) gameState.messages = [];
       tileBag = saved.tileBag;
       currentTurnTiles = saved.currentTurnTiles;
       // Mark all players as offline initially on restart
@@ -72,7 +84,7 @@ nextApp.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  const io = new Server(server, {
+  io = new Server(server, {
     cors: { origin: "*" },
     transports: ['websocket'],
     pingTimeout: 60000,
@@ -93,7 +105,7 @@ nextApp.prepare().then(() => {
       let role: Role = 'spectator';
 
       if (existingPlayer) {
-        console.log(`User ${username} reclaimed their spot.`);
+        console.log(`User ${username} reclaimed their spot. Old ID: ${existingPlayer.id}, New ID: ${socket.id}`);
         existingPlayer.id = socket.id;
         existingPlayer.online = true;
         role = 'player';
@@ -108,18 +120,49 @@ nextApp.prepare().then(() => {
           online: true
         };
         gameState.players.push(newPlayer);
+        console.log(`New player added: ${username} (${socket.id}). Total players: ${gameState.players.length}`);
       } else {
+        console.log(`User ${username} joined as spectator. Reason: ${gameState.gameStarted ? 'Game already started' : 'Lobby full'}`);
         gameState.spectators.push(socket.id);
       }
 
       socket.emit('joined', { role, gameState });
-      io.emit('gameStateUpdate', gameState);
+      
+      broadcastGameState();
+      saveState();
+    });
+
+    socket.on('sendMessage', (text: string) => {
+      // Find the player or spectator name
+      const player = gameState.players.find(p => p.id === socket.id);
+      const username = player ? player.username : 'Spectator';
+      
+      const newMessage = {
+        username,
+        text,
+        timestamp: Date.now()
+      };
+      
+      gameState.messages.push(newMessage);
+      console.log(`[CHAT] ${username}: ${text}`);
+      // Keep last 50 messages to prevent state bloat
+      if (gameState.messages.length > 50) {
+        gameState.messages.shift();
+      }
+      
+      broadcastGameState();
       saveState();
     });
 
     socket.on('startGame', () => {
+      console.log(`Start game request from: ${socket.id}`);
       const player = gameState.players.find(p => p.id === socket.id);
+      const isHost = gameState.players[0]?.id === socket.id;
+      
+      console.log(`Requester is player: ${!!player}, is host: ${isHost}, players count: ${gameState.players.length}`);
+      
       if (player && gameState.players.length >= 2) {
+        console.log('Starting game...');
         tileBag = createTileBag();
         gameState.players.forEach(p => {
           p.rack = tileBag.splice(0, INITIAL_TILES_PER_PLAYER);
@@ -128,8 +171,11 @@ nextApp.prepare().then(() => {
         gameState.gameStarted = true;
         gameState.currentPlayerIndex = 0;
         currentTurnTiles = [];
-        io.emit('gameStarted', gameState);
+        
+        broadcastGameState('gameStarted');
         saveState();
+      } else {
+        console.log('Start game condition not met.');
       }
     });
 
@@ -148,7 +194,7 @@ nextApp.prepare().then(() => {
           gameState.board[row][col] = tileToPlace;
           player.rack.splice(tileIndex, 1);
           currentTurnTiles.push({ row, col, tile: tileToPlace });
-          io.emit('gameStateUpdate', gameState);
+          broadcastGameState();
           saveState();
         }
       }
@@ -159,7 +205,7 @@ nextApp.prepare().then(() => {
       if (player && player.id === socket.id) {
         if (currentTurnTiles.length === 0) {
            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-           io.emit('gameStateUpdate', gameState);
+           broadcastGameState();
            saveState();
            return;
         }
@@ -183,7 +229,7 @@ nextApp.prepare().then(() => {
           } else {
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
           }
-          io.emit('gameStateUpdate', gameState);
+          broadcastGameState();
           saveState();
         } else {
           socket.emit('invalidMove', { 
@@ -202,7 +248,7 @@ nextApp.prepare().then(() => {
           player.rack.push(tile);
         });
         currentTurnTiles = [];
-        io.emit('gameStateUpdate', gameState);
+        broadcastGameState();
         saveState();
       }
     });
@@ -221,6 +267,7 @@ nextApp.prepare().then(() => {
               currentPlayerIndex: 0,
               board: Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
               remainingTiles: 0,
+              messages: [],
           };
           tileBag = [];
           currentTurnTiles = [];
@@ -228,7 +275,7 @@ nextApp.prepare().then(() => {
           
           // Emit a special event to tell everyone to return to connection page
           io.emit('gameReset');
-          io.emit('gameStateUpdate', gameState);
+          broadcastGameState();
         }
     });
 
@@ -243,7 +290,7 @@ nextApp.prepare().then(() => {
       // but if NO ONE is online, we might want to keep the state on disk but not in memory? 
       // For now, just keep it.
       
-      io.emit('gameStateUpdate', gameState);
+      broadcastGameState();
       saveState();
     });
   });

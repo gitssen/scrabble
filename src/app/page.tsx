@@ -5,11 +5,12 @@ import { useGame } from '@/hooks/useGame';
 import { MAX_PLAYERS } from '@/constants/game';
 import Board from '@/components/Board';
 import Rack from '@/components/Rack';
+import Chat from '@/components/Chat';
 
 export default function Home() {
   const [username, setUsername] = useState('');
   const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null);
-  const { gameState, role, isConnected, joinGame, startGame, placeTile, endTurn, revertTurn, resetGame, leaveGame, socket } = useGame();
+  const { gameState, role, isConnected, joinGame, startGame, placeTile, endTurn, revertTurn, resetGame, leaveGame, sendMessage, socket } = useGame();
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,47 +110,59 @@ export default function Home() {
 
     return (
       <main>
-        <div className="game-info">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h1 style={{ margin: 0 }}>Scrabble</h1>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              {isHost && (
-                <button onClick={resetGame} className="end-game-button">End Game for All</button>
-              )}
-              <button onClick={handleEndGame} className="leave-button">Leave Game</button>
-            </div>
-          </div>
-          <div className="scoreboard">
-            {gameState.players.map((p, idx) => (
-              <div key={p.id} className={`player-score ${idx === gameState.currentPlayerIndex ? 'active' : ''}`}>
-                {p.username}: {p.score}
+        <div className="game-layout">
+          <div className="game-area">
+            <div className="game-info">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h1 style={{ margin: 0 }}>Scrabble</h1>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {isHost && (
+                    <button onClick={resetGame} className="end-game-button">End Game for All</button>
+                  )}
+                  <button onClick={handleEndGame} className="leave-button">Leave Game</button>
+                </div>
               </div>
-            ))}
-          </div>
-          <p>Tiles left in bag: {gameState.remainingTiles}</p>
-          <h2 className={isMyTurn ? 'my-turn' : ''}>
-            {isMyTurn ? "It's your turn!" : `Waiting for ${currentPlayer?.username}...`}
-          </h2>
-        </div>
-
-        <Board 
-          board={gameState.board} 
-          onCellClick={handleCellClick} 
-        />
-
-        {myPlayer && (
-          <div className="player-controls">
-            <Rack 
-              rack={myPlayer.rack} 
-              onTileClick={handleTileClick} 
-              selectedTileIndex={selectedTileIndex}
-            />
-            <div className="turn-actions">
-              <button onClick={endTurn} disabled={!isMyTurn}>End Turn</button>
-              <button onClick={revertTurn} disabled={!isMyTurn} className="secondary">Revert</button>
+              <div className="scoreboard">
+                {gameState.players.map((p, idx) => (
+                  <div key={p.id} className={`player-score ${idx === gameState.currentPlayerIndex ? 'active' : ''}`}>
+                    {p.username}: {p.score}
+                  </div>
+                ))}
+              </div>
+              <p>Tiles left in bag: {gameState.remainingTiles}</p>
+              <h2 className={isMyTurn ? 'my-turn' : ''}>
+                {isMyTurn ? "It's your turn!" : `Waiting for ${currentPlayer?.username}...`}
+              </h2>
             </div>
+
+            <Board 
+              board={gameState.board} 
+              onCellClick={handleCellClick} 
+            />
+
+            {myPlayer && (
+              <div className="player-controls">
+                <Rack 
+                  rack={myPlayer.rack} 
+                  onTileClick={handleTileClick} 
+                  selectedTileIndex={selectedTileIndex}
+                />
+                <div className="turn-actions">
+                  <button onClick={endTurn} disabled={!isMyTurn}>End Turn</button>
+                  <button onClick={revertTurn} disabled={!isMyTurn} className="secondary">Revert</button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="side-panel">
+            <Chat 
+              messages={gameState.messages} 
+              onSendMessage={sendMessage} 
+              currentUser={username || 'Spectator'} 
+            />
+          </div>
+        </div>
 
         {role === 'spectator' && (
           <div className="spectator-msg">
@@ -158,9 +171,43 @@ export default function Home() {
         )}
 
         <style jsx>{`
+          .lobby-layout {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+          }
+          .lobby {
+            flex: 1;
+            min-width: 300px;
+          }
+          .side-panel {
+            width: 300px;
+          }
+          .game-layout {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+          }
           .game-info {
             text-align: center;
             margin-bottom: 1rem;
+            width: 100%;
           }
           .scoreboard {
             display: flex;
@@ -239,7 +286,7 @@ export default function Home() {
   const isHost = gameState.players[0]?.id === socket?.id;
 
   return (
-    <main>
+    <main className="lobby-layout">
       <div className="lobby">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h1 style={{ margin: 0 }}>Lobby</h1>
@@ -285,6 +332,14 @@ export default function Home() {
         {role === 'spectator' && (
           <p>Waiting for game to start...</p>
         )}
+      </div>
+
+      <div className="side-panel">
+        <Chat 
+          messages={gameState.messages} 
+          onSendMessage={sendMessage} 
+          currentUser={username || 'Spectator'} 
+        />
       </div>
     </main>
   );

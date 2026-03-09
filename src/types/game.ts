@@ -15,6 +15,12 @@ export interface Tile {
   representedLetter?: string; // For blank tiles
 }
 
+export interface ChatMessage {
+  username: string;
+  text: string;
+  timestamp: number;
+}
+
 export interface GameState {
   players: Player[];
   spectators: string[];
@@ -24,4 +30,5 @@ export interface GameState {
   currentPlayerIndex: number;
   board: (Tile | null)[][];
   remainingTiles: number;
+  messages: ChatMessage[];
 }

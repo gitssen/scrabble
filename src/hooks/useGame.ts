@@ -48,6 +48,7 @@ export function useGame() {
     });
 
     socket.on('gameStateUpdate', (newGameState: GameState) => {
+      console.log('Received gameStateUpdate, messages count:', newGameState.messages?.length);
       setGameState(newGameState);
     });
 
@@ -100,6 +101,12 @@ export function useGame() {
     }
   };
 
+  const sendMessage = (text: string) => {
+    if (text.trim()) {
+      socketRef.current?.emit('sendMessage', text.trim());
+    }
+  };
+
   const leaveGame = () => {
     socketRef.current?.disconnect();
     setGameState(null);
@@ -120,6 +127,7 @@ export function useGame() {
     revertTurn,
     resetGame,
     leaveGame,
+    sendMessage,
     socket: socketRef.current
   };
 }
