@@ -51,6 +51,16 @@ export function useGame() {
       setGameState(newGameState);
     });
 
+    socket.on('gameReset', () => {
+      console.log('Game was reset by host');
+      setGameState(null);
+      setRole(null);
+      setIsConnected(false);
+      // Reconnect fresh
+      socket.disconnect();
+      socket.connect();
+    });
+
     socket.on('gameStarted', (newGameState: GameState) => {
       setGameState(newGameState);
     });
@@ -90,6 +100,15 @@ export function useGame() {
     }
   };
 
+  const leaveGame = () => {
+    socketRef.current?.disconnect();
+    setGameState(null);
+    setRole(null);
+    setIsConnected(false);
+    // Reconnect for next time
+    socketRef.current?.connect();
+  };
+
   return {
     gameState,
     role,
@@ -100,6 +119,7 @@ export function useGame() {
     endTurn,
     revertTurn,
     resetGame,
+    leaveGame,
     socket: socketRef.current
   };
 }

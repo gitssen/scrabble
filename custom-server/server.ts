@@ -208,21 +208,28 @@ nextApp.prepare().then(() => {
     });
 
     socket.on('resetGame', () => {
-        // Reset state
-        gameState = {
-            players: [],
-            spectators: [],
-            gameStarted: false,
-            isGameOver: false,
-            winner: null,
-            currentPlayerIndex: 0,
-            board: Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
-            remainingTiles: 0,
-        };
-        tileBag = [];
-        currentTurnTiles = [];
-        if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE);
-        io.emit('gameStateUpdate', gameState);
+        // Only allow host (first player) to reset
+        if (gameState.players[0]?.id === socket.id) {
+          console.log('Game reset by host');
+          // Reset state
+          gameState = {
+              players: [],
+              spectators: [],
+              gameStarted: false,
+              isGameOver: false,
+              winner: null,
+              currentPlayerIndex: 0,
+              board: Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
+              remainingTiles: 0,
+          };
+          tileBag = [];
+          currentTurnTiles = [];
+          if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE);
+          
+          // Emit a special event to tell everyone to return to connection page
+          io.emit('gameReset');
+          io.emit('gameStateUpdate', gameState);
+        }
     });
 
     socket.on('disconnect', () => {

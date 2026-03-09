@@ -9,12 +9,18 @@ import Rack from '@/components/Rack';
 export default function Home() {
   const [username, setUsername] = useState('');
   const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null);
-  const { gameState, role, isConnected, joinGame, startGame, placeTile, endTurn, revertTurn, resetGame, socket } = useGame();
+  const { gameState, role, isConnected, joinGame, startGame, placeTile, endTurn, revertTurn, resetGame, leaveGame, socket } = useGame();
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     if (username.trim()) {
       joinGame(username.trim());
+    }
+  };
+
+  const handleEndGame = () => {
+    if (confirm('Leave this game? (This will take you back to the connection page)')) {
+      leaveGame();
     }
   };
 
@@ -77,7 +83,7 @@ export default function Home() {
                 ))}
               </ul>
             </div>
-            <button onClick={() => window.location.reload()}>Back to Lobby</button>
+            <button onClick={leaveGame}>Back to Connection Page</button>
           </div>
           <style jsx>{`
             .winner-announcement {
@@ -99,11 +105,20 @@ export default function Home() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     const myPlayer = gameState.players.find(p => p.id === socket?.id);
     const isMyTurn = currentPlayer?.id === socket?.id;
+    const isHost = gameState.players[0]?.id === socket?.id;
 
     return (
       <main>
         <div className="game-info">
-          <h1>Scrabble</h1>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h1 style={{ margin: 0 }}>Scrabble</h1>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {isHost && (
+                <button onClick={resetGame} className="end-game-button">End Game for All</button>
+              )}
+              <button onClick={handleEndGame} className="leave-button">Leave Game</button>
+            </div>
+          </div>
           <div className="scoreboard">
             {gameState.players.map((p, idx) => (
               <div key={p.id} className={`player-score ${idx === gameState.currentPlayerIndex ? 'active' : ''}`}>
@@ -186,6 +201,27 @@ export default function Home() {
           .secondary {
             background-color: var(--secondary);
           }
+          .end-game-button {
+            background-color: #cb4b16;
+            color: white;
+            padding: 5px 12px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+          }
+          .leave-button {
+            background-color: #dc322f;
+            color: white;
+            padding: 5px 12px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+          }
+          .leave-button:hover {
+            opacity: 0.9;
+          }
           .status-dot {
             display: inline-block;
             width: 8px;
@@ -205,7 +241,10 @@ export default function Home() {
   return (
     <main>
       <div className="lobby">
-        <h1>Lobby</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h1 style={{ margin: 0 }}>Lobby</h1>
+          <button onClick={handleEndGame} className="leave-button">Leave Lobby</button>
+        </div>
         <p>Connected as: {username || 'Spectator'}</p>
         <p>Role: {role}</p>
         <div>
