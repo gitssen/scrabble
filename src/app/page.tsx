@@ -111,30 +111,36 @@ export default function Home() {
     return (
       <main>
         <div className="game-layout">
-          <div className="game-area">
+          {/* Left Panel: Status & Scores */}
+          <div className="status-panel">
             <div className="game-info">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h1 style={{ margin: 0 }}>Scrabble</h1>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  {isHost && (
-                    <button onClick={resetGame} className="end-game-button">End Game for All</button>
-                  )}
-                  <button onClick={handleEndGame} className="leave-button">Leave Game</button>
-                </div>
-              </div>
+              <h1>Scrabble</h1>
               <div className="scoreboard">
                 {gameState.players.map((p, idx) => (
                   <div key={p.id} className={`player-score ${idx === gameState.currentPlayerIndex ? 'active' : ''}`}>
+                    <span className={`status-dot ${p.online ? 'online' : 'offline'}`}></span>
                     {p.username}: {p.score}
                   </div>
                 ))}
               </div>
-              <p>Tiles left in bag: {gameState.remainingTiles}</p>
-              <h2 className={isMyTurn ? 'my-turn' : ''}>
-                {isMyTurn ? "It's your turn!" : `Waiting for ${currentPlayer?.username}...`}
-              </h2>
+              <div className="game-stats">
+                <p>Tiles left: {gameState.remainingTiles}</p>
+                <h2 className={isMyTurn ? 'my-turn' : ''}>
+                  {isMyTurn ? "Your Turn!" : `Waiting for ${currentPlayer?.username}`}
+                </h2>
+              </div>
+              
+              <div className="host-controls">
+                {isHost && (
+                  <button onClick={resetGame} className="end-game-button">End Game for All</button>
+                )}
+                <button onClick={handleEndGame} className="leave-button">Leave Game</button>
+              </div>
             </div>
+          </div>
 
+          {/* Center Panel: Board & Player Controls */}
+          <div className="board-area">
             <Board 
               board={gameState.board} 
               onCellClick={handleCellClick} 
@@ -155,7 +161,8 @@ export default function Home() {
             )}
           </div>
 
-          <div className="side-panel">
+          {/* Right Panel: Chat */}
+          <div className="chat-panel">
             <Chat 
               messages={gameState.messages} 
               onSendMessage={sendMessage} 
@@ -171,59 +178,76 @@ export default function Home() {
         )}
 
         <style jsx>{`
-          .lobby-layout {
-            display: flex;
-            gap: 40px;
-            justify-content: center;
-            padding: 40px;
-            max-width: 1000px;
-            margin: 0 auto;
-          }
-          .lobby {
-            flex: 1;
-            min-width: 300px;
-          }
-          .side-panel {
-            width: 300px;
-          }
           .game-layout {
             display: flex;
-            gap: 20px;
+            gap: 30px;
             justify-content: center;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+            align-items: flex-start;
           }
-          .game-area {
+          .status-panel {
+            width: 250px;
+            background: #eee8d5;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .board-area {
             display: flex;
             flex-direction: column;
             align-items: center;
+            flex: 1;
           }
-          .side-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+          .chat-panel {
+            width: 300px;
           }
-          .game-info {
+          .game-info h1 {
+            margin: 0 0 20px 0;
+            font-size: 1.8rem;
             text-align: center;
-            margin-bottom: 1rem;
-            width: 100%;
+            color: #586e75;
           }
           .scoreboard {
             display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin: 10px 0;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
           }
           .player-score {
-            padding: 5px 10px;
+            padding: 10px;
             border-radius: 4px;
-            background: #eee8d5;
+            background: #fdf6e3;
+            display: flex;
+            align-items: center;
+            border: 1px solid #dcd7c0;
           }
           .player-score.active {
             background: var(--primary);
             color: white;
             font-weight: bold;
+            border-color: var(--primary);
+          }
+          .game-stats {
+            text-align: center;
+            padding: 15px 0;
+            border-top: 1px solid #dcd7c0;
+            border-bottom: 1px solid #dcd7c0;
+            margin-bottom: 20px;
+          }
+          .game-stats p {
+            margin: 0;
+            font-size: 0.9rem;
+          }
+          .game-stats h2 {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+          }
+          .host-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
           }
           .my-turn {
             color: var(--primary);
@@ -235,6 +259,7 @@ export default function Home() {
             100% { opacity: 1; }
           }
           .player-controls {
+            margin-top: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -251,7 +276,7 @@ export default function Home() {
           .end-game-button {
             background-color: #cb4b16;
             color: white;
-            padding: 5px 12px;
+            padding: 8px;
             font-size: 0.85rem;
             border-radius: 4px;
             border: none;
@@ -260,21 +285,17 @@ export default function Home() {
           .leave-button {
             background-color: #dc322f;
             color: white;
-            padding: 5px 12px;
+            padding: 8px;
             font-size: 0.85rem;
             border-radius: 4px;
             border: none;
             cursor: pointer;
           }
-          .leave-button:hover {
-            opacity: 0.9;
-          }
           .status-dot {
-            display: inline-block;
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            margin-right: 8px;
+            margin-right: 10px;
           }
           .online { background-color: #859900; }
           .offline { background-color: #dc322f; }
