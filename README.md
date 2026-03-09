@@ -2,19 +2,19 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+This project requires a custom server for Socket.io functionality.
+
+To start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
+This will start the **custom server** (using `custom-server/server.ts`), which handles both the Next.js app and the Socket.io game logic.
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+**Note:** If you run `next dev` directly, the WebSocket connection will fail because the game server won't be initialized.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

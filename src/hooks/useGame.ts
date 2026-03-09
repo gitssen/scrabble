@@ -14,7 +14,8 @@ export function useGame() {
       transports: ['websocket'],
       upgrade: false,
       reconnectionAttempts: 5,
-      timeout: 10000
+      timeout: 10000,
+      autoConnect: true
     });
     socketRef.current = socket;
 
@@ -29,6 +30,10 @@ export function useGame() {
 
     socket.on('connect_error', (err) => {
       console.error('Socket connection error:', err.message);
+      console.error('Connection details:', {
+        transport: socket.io.engine.transport.name,
+        uri: socket.io.uri
+      });
     });
 
     socket.on('disconnect', (reason) => {

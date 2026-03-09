@@ -74,13 +74,15 @@ nextApp.prepare().then(() => {
 
   const io = new Server(server, {
     cors: { origin: "*" },
-    transports: ['websocket']
+    transports: ['websocket'],
+    pingTimeout: 60000,
+    pingInterval: 25000
   });
 
-  console.log('Socket.io (Websocket only) initialized on port 3000');
+  console.log('✅ Socket.io initialized (WebSocket transport only)');
 
   io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
+    console.log(`🔌 New connection: ${socket.id} (Total: ${io.engine.clientsCount})`);
 
     socket.on('join', (username: string) => {
       console.log(`Join attempt: ${username} (ID: ${socket.id})`);
