@@ -15,7 +15,7 @@ const port = 3000;
 const nextApp = next({ dev, hostname, port });
 const handle = nextApp.getRequestHandler();
 
-const STATE_FILE = path.join(process.cwd(), 'gamestate.json');
+const STATE_FILE = path.join(process.cwd(), '.gamestate.json');
 
 // Game State
 let io: Server;
