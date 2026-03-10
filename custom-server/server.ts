@@ -184,6 +184,39 @@ nextApp.prepare().then(() => {
       const isCurrentPlayer = gameState.players[gameState.currentPlayerIndex]?.id === socket.id;
       
       if (player && isCurrentPlayer && !gameState.board[row][col]) {
+        // Validation: All tiles in currentTurnTiles must be in the same row OR the same column
+        if (currentTurnTiles.length > 0) {
+          const firstTile = currentTurnTiles[0];
+          
+          if (currentTurnTiles.length === 1) {
+            // Second tile defines the potential row or column
+            if (row !== firstTile.row && col !== firstTile.col) {
+              socket.emit('invalidMove', { message: "All tiles in a turn must be in the same row or column." });
+              return;
+            }
+          } else {
+            // 3+ tiles: orientation is already established by the first two
+            const isHorizontal = currentTurnTiles.every(t => t.row === firstTile.row);
+            const isVertical = currentTurnTiles.every(t => t.col === firstTile.col);
+            
+            if (isHorizontal && row !== firstTile.row) {
+              socket.emit('invalidMove', { message: "Tiles must be in the same row." });
+              return;
+            }
+            if (isVertical && col !== firstTile.col) {
+              socket.emit('invalidMove', { message: "Tiles must be in the same column." });
+              return;
+            }
+            if (!isHorizontal && !isVertical) {
+               // This case shouldn't happen with the length === 1 check, but for safety:
+               if (row !== firstTile.row && col !== firstTile.col) {
+                  socket.emit('invalidMove', { message: "Tiles must be in the same row or column." });
+                  return;
+               }
+            }
+          }
+        }
+
         const tile = player.rack[tileIndex];
         if (tile) {
           const tileToPlace = { ...tile };
